@@ -9,6 +9,7 @@
 html{
 	user-select: none;
 	overflow: hidden;
+	font-family: Courier;
 }
 body{
 	margin: 0;
@@ -86,7 +87,7 @@ body{
 }
 
 </style>
-<body>
+<body oncontextmenu="return false">
 
 <audio id="music" src="assets/music.ogg" loop></audio>
 
@@ -143,29 +144,31 @@ function Game(){
 		game.images = {};
 		game.imageCounter = 1;
 
-		game.imageurls.forEach(function(url){
-			const imageurl = `${game.baseurl}${url[1]}`
+		game.music.oncanplaythrough = function(){
+			game.imageurls.forEach(function(url){
+				const imageurl = `${game.baseurl}${url[1]}`
 
-			fetch(imageurl).then(function(response){
-				return response.blob();
-			}).then(blob => {
-			    const objecturl = URL.createObjectURL(blob);
+				fetch(imageurl).then(function(response){
+					return response.blob();
+				}).then(blob => {
+				    const objecturl = URL.createObjectURL(blob);
 
-				const image = new Image();
+					const image = new Image();
 
-				image.src = objecturl;
+					image.src = objecturl;
 
-				game.images[url[0]] = image;
+					game.images[url[0]] = image;
 
-				++game.imageCounter;
+					++game.imageCounter;
 
-				if (game.imageCounter === game.imageurls.length){
-					game.loader.remove();
+					if (game.imageCounter === game.imageurls.length){
+						game.loader.remove();
 
-					setup();
-				}
+						setup();
+					}
+				});
 			});
-		});
+		}
 	}
 	function setup(){
 		addEventListeners();
@@ -910,7 +913,13 @@ function Game(){
 		window.onresize = function(){
 			resize();
 		}
+		window.addEventListener("touchstart", function(event){
+			event.preventDefault();
+		}, {passive: false});
 		window.addEventListener("touchmove", function(event){
+			event.preventDefault();
+		}, {passive: false});
+		window.addEventListener("touchend", function(event){
 			event.preventDefault();
 		}, {passive: false});
 	}
