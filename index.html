@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8"/>
+	<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
+	<title> Space Destroyers </title>
+<style>
+
+html{
+	user-select: none;
+	overflow: hidden;
+}
+body{
+	margin: 0;
+	padding: 0;
+	background: #000;
+}
+#box{
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+}
+#controls{
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+}
+#left{
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	position: absolute;
+	left: 5%;
+	bottom: 5%;
+	width: 17%;
+	height: 10%;
+	opacity: 0.4;
+	background: #8814ba;
+}
+#right{
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	position: absolute;
+	left: 28%;
+	bottom: 5%;
+	width: 17%;
+	height: 10%;
+	opacity: 0.4;
+	background: #8814ba;
+}
+#shoot{
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	position: absolute;
+	right: 5%;
+	bottom: 5%;
+	width: 17%;
+	height: 10%;
+	opacity: 0.4;
+	background: #bd1e73;
+}
+.button1{
+	user-select: none;
+	width: 50%;
+	height: 50%;
+}
+.button2{
+	user-select: none;
+	width: 150%;
+	height: 150%;
+}
+#loader{
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	color: #fff;
+	transform: translate(-50%, -50%);
+}
+
+</style>
+<body>
+
+<audio id="music" src="assets/music.ogg" loop></audio>
+
+<div id="box">
+	<canvas id="base"></canvas>
+	<div id="controls">
+		<div id="left">
+			<image class="button1" src="assets/left.png"/>
+		</div>
+		<div id="right">
+			<image class="button1" src="assets/right.png"/>
+		</div>
+		<div id="shoot">
+			<image class="button2" src="assets/shoot.png"/>
+		</div>
+		<div id="loader">
+			<h1> Loading... </h1>
+		</div>
+	</div>
+</div>
+
+<script>
+
+function Game(){
+	const game = {};
+
+	function main(){
+		game.base = document.querySelector("#base");
+		game.left = document.querySelector("#left");
+		game.right = document.querySelector("#right");
+		game.shoot = document.querySelector("#shoot");
+		game.loader = document.querySelector("#loader");
+
+		game.music = document.querySelector("#music");
+
+		game.context = game.base.getContext("2d");
+
+		game.context.imageSmoothingEnabled = false;
+
+		game.width = 400;
+		game.height = 600;
+
+		game.base.width = game.width;
+		game.base.height = game.height;
+
+		game.ratio = 2/3;
+
+		load();
+	}
+	function load(){
+		game.baseurl = "assets/";
+		game.imageurls = [["background", "background.png"], ["ship", "ship.png"], ["enemy1", "enemy1.png"], ["enemy2", "enemy2.png"], ["enemy3", "enemy3.png"], ["boss1", "boss1.png"], ["boss2", "boss2.png"], ["boss3", "boss3.png"], ["laser", "laser.png"], ["fire", "fire.png"], ["health0", "health0.png"], ["health1", "health1.png"], ["health2", "health2.png"], ["health3", "health3.png"], ["play", "play.png"], ["gameOver", "gameOver.png"]];
+
+		game.images = {};
+		game.imageCounter = 1;
+
+		game.imageurls.forEach(function(url){
+			const imageurl = `${game.baseurl}${url[1]}`
+
+			fetch(imageurl).then(function(response){
+				return response.blob();
+			}).then(blob => {
+			    const objecturl = URL.createObjectURL(blob);
+
+				const image = new Image();
+
+				image.src = objecturl;
+
+				game.images[url[0]] = image;
+
+				++game.imageCounter;
+
+				if (game.imageCounter === game.imageurls.length){
+					game.loader.remove();
+
+					setup();
+				}
+			});
+		});
+	}
+	function setup(){
+		addEventListeners();
+		addPlayButton();
+		addBackground();
+		loop();
+	}
+	function start(){
+		addHealthBar();
+		addScoreOverlay();
+		addShip();
+		addEnemies();
+		addBosses();
+	}
+	function addPlayButton(){
+		game.playButton = {
+			image: game.images.play,
+			x: 85,
+			y: 230,
+			width: 230,
+			height: 100,
+			restart: false,
+
+			click: function(){
+				if (!game.playButton.restart){
+					game.playButton.restart = true;
+
+					game.playButton.image = game.images.gameOver;
+
+					game.playButton.remove();
+
+					start();
+				}
+				else{
+					game.playButton.remove();
+
+					restart();
+				}
+			},
+			spawn: function(){
+				game.playButton.x = 85;
+				game.playButton.y = 160;
+				game.playButton.width = 240;
+				game.playButton.height = 200;
+			},
+			remove: function(){
+				game.playButton.x = -1000;
+				game.playButton.y = -1000;
+			},
+			render: function(){
+				game.context.drawImage(game.playButton.image, game.playButton.x, game.playButton.y, game.playButton.width, game.playButton.height);
+			}			
+		}
+	}
+	function addHealthBar(){
+		game.healthBar = {
+			image: game.images.health3,
+			x: 285,
+			y: 20,
+			width: 110,
+			height: 35,
+
+			update: function(){
+				game.healthBar.updateHealth();
+			},
+			updateHealth: function(){
+				game.healthBar.image = game.images[`health${game.ship.health}`];
+			},
+			reset: function(){
+				game.healthBar.x = 285;
+				game.healthBar.y = 20;
+				game.healthBar.image = game.images.health3;
+			},
+			remove: function(){
+				game.healthBar.x = -10000;
+				game.healthBar.y = -10000;
+				game.healthBar.image = game.images.health3;
+			},
+			render: function(){
+				game.context.drawImage(game.healthBar.image, game.healthBar.x, game.healthBar.y, game.healthBar.width, game.healthBar.height);
+			}
+		};
+	}
+	function addScoreOverlay(){
+		game.score = 0;
+		game.highScore = 0;
+
+		game.scoreOverlay = {
+			text1: `Score: ${game.score}`,
+			text2: `HighScore: ${game.highScore}`,
+			x1: 20,
+			x2: 20,
+			y1: 45,
+			y2: 80,
+			font: "Monospace",
+			style: "Bold",
+			color: "#fff",
+			size: "24px",
+
+			addPoints: function(){
+				game.score += 10;
+
+				game.scoreOverlay.text1 = `Score: ${game.score}`;
+			},
+			reset: function(){
+				if (game.score > game.highScore){
+					game.highScore = game.score;
+
+					game.scoreOverlay.text2 = `HighScore: ${game.highScore}`;
+				}
+				game.score = 0;
+
+				game.scoreOverlay.text1 = `Score: ${game.score}`;
+			},
+			render: function(){
+				game.context.fillStyle = game.scoreOverlay.color;
+				game.context.font = `${game.scoreOverlay.style} ${game.scoreOverlay.size} ${game.scoreOverlay.font}`;
+
+				game.context.fillText(game.scoreOverlay.text1, game.scoreOverlay.x1, game.scoreOverlay.y1);
+				game.context.fillText(game.scoreOverlay.text2, game.scoreOverlay.x2, game.scoreOverlay.y2);
+			}
+		}
+	}
+	function addBackground(){
+		game.background = {
+			image: game.images.background,
+			x1: 0,
+			x2: 0,
+			y1: 0,
+			y2: 0 - game.height,
+			width: game.width,
+			height: game.height,
+			speed: 2,
+
+			update: function(){
+				game.background.move();
+			},
+			move: function(){
+				if (game.background.y1 > game.height){
+					game.background.y1 = 0 - game.height;
+				}
+				if (game.background.y2 > game.height){
+					game.background.y2 = 0 - game.height;
+				}
+				game.background.y1 += game.background.speed;
+				game.background.y2 += game.background.speed;
+			},
+			render: function(){
+				game.context.drawImage(game.background.image, game.background.x1, game.background.y1, game.background.width, game.background.height);
+				game.context.drawImage(game.background.image, game.background.x2, game.background.y2, game.background.width, game.background.height);
+			}
+		};
+	}
+	function addShip(){
+		game.ship = {
+			image: game.images.ship,
+			x: 180,
+			y: 470,
+			width: 50,
+			height: 35,
+			speed: 0,
+			onLeft: false,
+			onRight: false,
+			shootable: true,
+			bullets: [],
+			bulletLimit: 5,
+			health: 3,
+			recoverTimeout1: 0,
+			recoverTimeout2: 0,
+			recoverIntervalTime: 10000,
+
+			update: function(){
+				game.ship.move();
+				game.ship.checkCollision();
+			},
+			move: function(){
+				game.ship.x += game.ship.speed;
+
+				if (game.ship.onLeft && !game.ship.onRight){
+					game.ship.speed = -7;
+				}
+				if (game.ship.onRight && !game.ship.onLeft){
+					game.ship.speed = 7;
+				}
+				if (!game.ship.onLeft && !game.ship.onRight){
+					game.ship.speed = 0;
+				}
+				if (game.ship.x <= 0){
+					game.ship.x = 0;
+				}
+				if (game.ship.x >= game.width - game.ship.width){
+					game.ship.x = game.width - game.ship.width;
+				}
+				if (game.ship.health > 3){
+					game.ship.health = 3;
+				}
+				if (game.ship.health < 0){
+					game.ship.health = 0;
+				}
+			},
+			moveLeft: function(){
+				game.ship.onLeft = true;
+			},
+			moveRight: function(){
+				game.ship.onRight = true;
+			},
+			leftStop: function(){
+				game.ship.onLeft = false;
+			},
+			rightStop: function(){
+				game.ship.onRight = false;
+			},
+			shoot: function(){
+				if (game.ship.shootable){
+					addBullet();
+
+					window.setTimeout(function(){
+						game.ship.shootable = true;
+					}, 500);
+					game.ship.shootable = false;
+				}
+			},
+			damage: function(){
+				game.ship.health -= 1;
+
+				if (game.ship.health === 2){
+					game.ship.recoverTimeout1 = window.setTimeout(function(){
+						++game.ship.health;
+					}, game.ship.recoverIntervalTime*2);
+				}
+				else if (game.ship.health === 1){
+					game.ship.recoverTimeout2 = window.setTimeout(function(){
+						++game.ship.health;
+					}, game.ship.recoverIntervalTime);
+				}
+			},
+			checkCollision: function(){
+				game.enemies.forEach(function(enemy){
+					if (
+						(game.ship.x + game.ship.width > enemy.x + 5) &&
+						(game.ship.x < enemy.x + enemy.width - 5) &&
+						(game.ship.y + game.ship.height > enemy.y) &&
+						(game.ship.y < enemy.y + enemy.height - 5) &&
+						(enemy.y > 0)
+					){
+						game.enemies.splice(game.enemies.indexOf(enemy), 1);
+
+						if (game.ship.health > 1){
+							game.ship.damage();
+						}
+						else{
+							gameOver();
+						}
+					}
+				});
+				game.boss.bullets.forEach(function(bullet){
+					if (
+						(game.ship.x + game.ship.width > bullet.x + 20) &&
+						(game.ship.x < bullet.x + bullet.width - 20) &&
+						(game.ship.y + game.ship.height > bullet.y) &&
+						(game.ship.y < bullet.y + bullet.height - 20)
+					){
+						game.boss.bullets.splice(game.boss.bullets.indexOf(bullet), 1);
+
+						if (game.ship.health > 1){
+							game.ship.damage();
+						}
+						else{
+							gameOver();
+						}
+					}
+				});
+			},
+			reset(){
+				game.ship.x = 180;
+				game.ship.y = 470;
+				game.ship.onLeft = false;
+				game.ship.onRight = false;
+				game.ship.bullets = [];
+				game.ship.health = 3;
+
+				if (game.ship.recoverTimeout1){
+					window.clearTimeout(game.ship.recoverTimeout1);
+				}
+				if (game.ship.recoverTimeout2){
+					window.clearTimeout(game.ship.recoverTimeout2);
+				}
+			},
+			remove(){
+				game.ship.x = -10000;
+				game.ship.y = -10000;
+				game.ship.onLeft = false;
+				game.ship.onRight = false;
+				game.ship.bullets = [];
+				game.ship.health = 3;
+
+				if (game.ship.recoverTimeout1){
+					window.clearTimeout(game.ship.recoverTimeout1);
+				}
+				if (game.ship.recoverTimeout2){
+					window.clearTimeout(game.ship.recoverTimeout2);
+				}
+			},
+			render: function(){
+				game.context.drawImage(game.ship.image, game.ship.x, game.ship.y, game.ship.width, game.ship.height);
+			}
+		};
+	}
+	function addBullet(){
+		const bullet = {
+			image: game.images.laser,
+			x: game.ship.x + game.ship.width/2 - 15,
+			y: game.ship.y + game.ship.height/2 - 15,
+			width: 30,
+			height: 30,
+			speed: 7,
+
+			update: function(){
+				bullet.move();
+				bullet.checkBound();
+			},
+			move: function(){
+				bullet.y -= bullet.speed;
+			},
+			checkBound: function(){
+				if (bullet.y < -1000){
+					bullet.destroy();
+				}
+			},
+			destroy: function(){
+				game.ship.bullets.splice(bullet, 1);
+			},
+			render: function(){
+				game.context.drawImage(bullet.image, bullet.x, bullet.y, bullet.width, bullet.height);
+			}
+		};
+		game.ship.bullets.push(bullet);
+	}
+	function addEnemies(){
+		game.enemies = [];
+
+		game.enemy = {
+			intervalTime: 2000,
+
+			randomImage: function(){
+				return game.images[`enemy${random(1, 3)}`];
+			},
+			randomX: function(){
+				return random(50, 320);
+			},
+			randomY: function(){
+				return random(-200, -100);
+			},
+			randomSpeed: function(){
+				return random(1, 6);
+			},
+			spawn: function(){
+				game.enemyInterval = window.setInterval(addEnemy, game.enemy.intervalTime);
+			},
+			remove: function(){
+				game.enemies.splice(0, game.enemies.length);
+
+				window.clearInterval(game.enemyInterval);
+			}
+		}
+		game.enemy.spawn();
+	}
+	function addEnemy(){
+		const enemy = {
+			image: game.enemy.randomImage(),
+			x: game.enemy.randomX(),
+			y: game.enemy.randomY(),
+			width: 40,
+			height: 30,
+			speedX: 2,
+			speedY: game.enemy.randomSpeed(),
+
+			setup: function(){
+				enemy.initialX = enemy.x;
+
+				enemy.maxX = enemy.initialX + 50;
+				enemy.minX = enemy.initialX - 50;
+			},
+			update: function(){
+				enemy.move();
+				enemy.checkCollision();
+				enemy.checkBound();
+			},
+			move: function(){
+				if (enemy.x >= enemy.maxX || enemy.x <= enemy.minX){
+					enemy.speedX *= -1;
+				}
+				enemy.x += enemy.speedX;
+				enemy.y += enemy.speedY;
+			},
+			checkCollision: function(){
+				game.ship.bullets.forEach(function(bullet){
+					if (
+						(bullet.x + bullet.width > enemy.x + 15) &&
+						(bullet.x < enemy.x + enemy.width - 15) &&
+						(bullet.y + bullet.height > enemy.y) &&
+						(bullet.y < enemy.y + enemy.height -15) &&
+						(enemy.y > 0)
+					){
+						bullet.y = 0 - bullet.height;
+
+						enemy.destroy();
+
+						game.scoreOverlay.addPoints();
+					}
+				});
+			},
+			checkBound: function(){
+				if (enemy.y > game.height){
+					enemy.destroy();
+				}
+			},
+			destroy: function(){
+				game.enemies.splice(game.enemies.indexOf(enemy), 1);
+			},
+			render: function(){
+				game.context.drawImage(enemy.image, enemy.x, enemy.y, enemy.width, enemy.height);
+			}
+		};
+		enemy.setup();
+
+		game.enemies.push(enemy);
+	}
+	function addBosses(){
+		game.bosses = [];
+
+		game.boss = {
+			bullets: [],
+			bossTimeout: 0,
+			intervalTime: 15000,
+
+			randomImage: function(){
+				return game.images[`boss${random(1, 3)}`];
+			},
+			randomX: function(){
+				return random(50, 320);
+			},
+			randomY: function(){
+				return random(-200, -100);
+			},
+			spawn: function(){
+				game.boss.bossTimeout = window.setTimeout(addBoss, game.boss.intervalTime);
+			},
+			remove: function(){
+				game.bosses.forEach(function(boss){
+					if (boss.bulletInterval){
+						window.clearInterval(boss.bulletInterval);
+					}
+				});
+				game.bosses.splice(0, game.bosses.length);
+
+				if (game.boss.bossTimeout){
+					window.clearTimeout(game.boss.bossTimeout);
+				}
+			}
+		}
+		game.boss.spawn();
+	}
+	function addBoss(){
+		const boss = {
+			image: game.boss.randomImage(),
+			x: game.boss.randomX(),
+			y: game.boss.randomY(),
+			width: 80,
+			height: 66,
+			speedX: 2,
+			speedY: 3,
+			health: 10,
+			bulletInterval: 0,
+			bulletIntervalTime: 1000,
+
+			setup: function(){
+				boss.maxX = game.width - boss.width;
+				boss.minX = 0;
+
+				boss.maxY = game.width/4;
+
+				boss.shoot();
+			},
+			update: function(){
+				boss.move();
+				boss.checkCollision();
+			},
+			move: function(){
+				if (boss.x >= boss.maxX || boss.x <= boss.minX){
+					boss.speedX *= -1;
+				}
+				if (boss.y >= boss.maxY){
+					boss.speedY = 0;
+				}
+				boss.x += boss.speedX;
+				boss.y += boss.speedY;
+			},
+			shoot: function(){
+				boss.bulletInterval = window.setInterval(function(){
+					if (boss.y > 0){
+						addFire(boss);
+					}
+				}, boss.bulletIntervalTime);
+			},
+			checkCollision: function(){
+				game.ship.bullets.forEach(function(bullet){
+					if (
+						(bullet.x + bullet.width > boss.x + 15) &&
+						(bullet.x < boss.x + boss.width - 15) &&
+						(bullet.y + bullet.height > boss.y) &&
+						(bullet.y < boss.y + boss.height - 15) &&
+						(boss.y > 0)
+					){
+						bullet.y = 0 - bullet.height;
+
+						boss.damage();
+
+						game.scoreOverlay.addPoints();
+					}
+				});
+			},
+			damage: function(){
+				if (boss.health > 0){
+					boss.health -= 1;
+				}
+				else{
+					game.boss.spawn();
+
+					boss.destroy();
+				}
+			},
+			destroy: function(){
+				window.clearInterval(boss.bulletInterval);
+
+				game.bosses.splice(game.bosses.indexOf(boss), 1);
+			},
+			render: function(){
+				game.context.drawImage(boss.image, boss.x, boss.y, boss.width, boss.height);
+			}
+		};
+		boss.setup();
+
+		game.bosses.push(boss);
+	}
+	function addFire(boss){
+		const bullet = {
+			image: game.images.fire,
+			x: boss.x + boss.width/2 - 20,
+			y: boss.y + boss.height/2 - 20,
+			width: 40,
+			height: 40,
+			speed: 7,
+
+			update: function(){
+				bullet.move();
+				bullet.checkBound();
+			},
+			move: function(){
+				bullet.y += bullet.speed;
+			},
+			checkBound: function(){
+				if (bullet.y > game.height){
+					bullet.destroy();
+				}
+			},
+			destroy: function(){
+				game.boss.bullets.splice(bullet, 1);
+			},
+			render: function(){
+				game.context.drawImage(bullet.image, bullet.x, bullet.y, bullet.width, bullet.height);
+			}
+		};
+		game.boss.bullets.push(bullet);
+	}
+	function restart(){
+		game.healthBar.reset();
+		game.scoreOverlay.reset();
+		game.ship.reset();
+		game.enemy.spawn();
+		game.boss.spawn();
+	}
+	function gameOver(){
+		game.healthBar.remove();
+		game.ship.remove();
+		game.enemy.remove();
+		game.boss.remove();
+		game.playButton.spawn();
+	}
+	function random(min, max){
+		return (Math.floor(Math.random()*(max - min + 1)) + min);
+	}
+	function addEventListeners(){
+		window.onkeydown = function(event){
+			if (game.ship){
+				switch (event.keyCode){
+					case 37:
+						game.ship.moveLeft();
+
+						break;
+					case 39:
+						game.ship.moveRight();
+
+						break;
+					case 32:
+						game.ship.shoot();
+
+						break;
+				}
+			}
+		}
+		window.onkeyup = function(event){
+			if (game.ship){
+				switch (event.keyCode){
+					case 37:
+						game.ship.leftStop();
+
+						break;
+					case 39:
+						game.ship.rightStop();
+
+						break;
+				}
+			}
+		}
+		window.onpointerdown = function(event){
+			if (game.playButton){
+				const bounds = game.base.getBoundingClientRect();
+
+				const x = (event.clientX - bounds.left)*(game.base.width/game.base.clientWidth);
+				const y = (event.clientY - bounds.top)*(game.base.height/game.base.clientHeight);
+
+				if (
+					(x > game.playButton.x) &&
+					(x < game.playButton.x + game.playButton.width) &&
+					(y > game.playButton.y) &&
+					(y < game.playButton.y + game.playButton.height)
+				){
+					game.playButton.click();
+				}
+				game.music.play();
+			}
+		}
+		game.left.onpointerdown = function(){
+			if (game.ship){
+				game.ship.moveLeft();
+			}
+		}
+		game.right.onpointerdown = function(){
+			if (game.ship){
+				game.ship.moveRight();
+			}
+		}
+		game.shoot.onpointerdown = function(){
+			if (game.ship){
+				game.ship.shoot();
+			}
+		}
+		game.left.onpointerup = function(){
+			if (game.ship){
+				game.ship.leftStop();
+			}
+		}
+		game.right.onpointerup = function(){
+			if (game.ship){
+				game.ship.rightStop();
+			}
+		}
+		game.left.onpointerout = function(){
+			if (game.ship){
+				game.ship.leftStop();
+			}
+		}
+		game.right.onpointerout = function(){
+			if (game.ship){
+				game.ship.rightStop();
+			}
+		}
+	}
+	function update(){
+		game.background.update();
+
+		if (game.ship){
+			game.ship.bullets.forEach(function(bullet){
+				bullet.update();
+			});
+			game.boss.bullets.forEach(function(bullet){
+				bullet.update();
+			});
+			game.ship.update();
+			game.enemies.forEach(function(enemy){
+				enemy.update();
+			});
+			game.bosses.forEach(function(boss){
+				boss.update();
+			});
+			game.healthBar.update();
+		}
+	}
+	function render(){
+		game.background.render();
+
+		if (game.ship){
+			game.ship.bullets.forEach(function(bullet){
+				bullet.render();
+			});
+			game.boss.bullets.forEach(function(bullet){
+				bullet.render();
+			});
+			game.ship.render();
+			game.enemies.forEach(function(enemy){
+				enemy.render();
+			});
+			game.bosses.forEach(function(boss){
+				boss.render();
+			});
+			game.healthBar.render();
+			game.scoreOverlay.render();
+		}
+		game.playButton.render();
+	}
+	function loop(){
+		render();
+		update();
+
+		window.requestAnimationFrame(loop);
+	}
+	function resize(){
+		if (window.innerWidth/window.innerHeight < game.ratio){
+			game.base.style.width = `${window.innerWidth}px`;
+			game.base.style.height = `${window.innerWidth/game.ratio}px`;
+		}
+		else{
+			game.base.style.width = `${window.innerHeight*game.ratio}px`;
+			game.base.style.height = `${window.innerHeight}px`;
+		}
+	}
+	function initialize(){
+		main();
+		resize();
+
+		window.onresize = function(){
+			resize();
+		}
+		window.addEventListener("touchmove", function(event){
+			event.preventDefault();
+		}, {passive: false});
+	}
+	initialize();
+}
+Game();
+
+</script>
+</body>
+</html>
