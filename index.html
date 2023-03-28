@@ -38,6 +38,7 @@ body{
 	bottom: 5%;
 	width: 17%;
 	height: 10%;
+	visibility: hidden;
 	opacity: 0.4;
 	background: #8814ba;
 }
@@ -50,6 +51,7 @@ body{
 	bottom: 5%;
 	width: 17%;
 	height: 10%;
+	visibility: hidden;
 	opacity: 0.4;
 	background: #8814ba;
 }
@@ -62,50 +64,73 @@ body{
 	bottom: 5%;
 	width: 17%;
 	height: 10%;
+	visibility: hidden;
 	opacity: 0.4;
 	background: #bd1e73;
 }
 .button1{
 	user-select: none;
-	width: 50%;
-	height: 50%;
+	width: 40%;
+	height: 40%;
 }
 .button2{
 	user-select: none;
 	width: 150%;
 	height: 150%;
 }
-#loader{
+#loader-text{
 	display: flex;
 	justify-content: center;
 	align-items: center;
 	position: absolute;
 	top: 50%;
 	left: 50%;
+	font-size: 40%;
 	color: #fff;
 	transform: translate(-50%, -50%);
 }
+#loader-ring{
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	color: #fff;
+	transform: translate(-50%, -50%);
+}
+#loader-ring:after{
+	content: " ";
+	display: block;
+	width: 80px;
+	height: 80px;
+	margin: 8px;
+	border-radius: 50%;
+	border: 6px solid #fff;
+	border-color: #fff transparent #fff transparent;
+	animation: ring 1.2s linear infinite;
+}
+@keyframes ring{
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
 
 </style>
-	
-<body oncontextmenu="return false">
 
-<audio id="music" src="assets/music.ogg" loop></audio>
+<body oncontextmenu="return false">
 
 <div id="box">
 	<canvas id="base"></canvas>
 	<div id="controls">
-		<div id="left">
-			<image class="button1" src="assets/left.png"/>
-		</div>
-		<div id="right">
-			<image class="button1" src="assets/right.png"/>
-		</div>
-		<div id="shoot">
-			<image class="button2" src="assets/shoot.png"/>
-		</div>
+		<div id="left"></div>
+		<div id="right"></div>
+		<div id="shoot"></div>
 		<div id="loader">
-			<h1> Loading... </h1>
+			<div id="loader-text">
+				<h1> Loading </h1>
+			</div>
+			<div id="loader-ring"></div>
 		</div>
 	</div>
 </div>
@@ -121,8 +146,6 @@ function Game(){
 		game.right = document.querySelector("#right");
 		game.shoot = document.querySelector("#shoot");
 		game.loader = document.querySelector("#loader");
-
-		game.music = document.querySelector("#music");
 
 		game.context = game.base.getContext("2d");
 
@@ -140,41 +163,66 @@ function Game(){
 	}
 	function load(){
 		game.baseurl = "assets/";
-		game.imageurls = [["background", "background.png"], ["ship", "ship.png"], ["enemy1", "enemy1.png"], ["enemy2", "enemy2.png"], ["enemy3", "enemy3.png"], ["boss1", "boss1.png"], ["boss2", "boss2.png"], ["boss3", "boss3.png"], ["laser", "laser.png"], ["fire", "fire.png"], ["health0", "health0.png"], ["health1", "health1.png"], ["health2", "health2.png"], ["health3", "health3.png"], ["play", "play.png"], ["gameOver", "gameOver.png"]];
+		game.asseturls = [["background", "background.png"], ["ship", "ship.png"], ["enemy1", "enemy1.png"], ["enemy2", "enemy2.png"], ["enemy3", "enemy3.png"], ["boss1", "boss1.png"], ["boss2", "boss2.png"], ["boss3", "boss3.png"], ["laser", "laser.png"], ["fire", "fire.png"], ["health0", "health0.png"], ["health1", "health1.png"], ["health2", "health2.png"], ["health3", "health3.png"], ["play", "play.png"], ["gameOver", "gameOver.png"], ["left", "left.png"], ["right", "right.png"], ["shoot", "shoot.png"], ["music", "music.ogg"]];
 
-		game.images = {};
-		game.imageCounter = 1;
+		game.assets = {};
+		game.assetCounter = 0;
 
-		game.music.oncanplaythrough = function(){
-			game.imageurls.forEach(function(url){
-				const imageurl = `${game.baseurl}${url[1]}`
+		game.asseturls.forEach(function(url){
+			const asseturl = `${game.baseurl}${url[1]}`
 
-				fetch(imageurl).then(function(response){
-					return response.blob();
-				}).then(blob => {
-				    const objecturl = URL.createObjectURL(blob);
+			fetch(asseturl).then(function(response){
+				return response.blob();
+			}).then(blob => {
+			    const objecturl = URL.createObjectURL(blob);
 
+			    if (blob.type === "image/png"){
 					const image = new Image();
 
 					image.src = objecturl;
 
-					game.images[url[0]] = image;
+					game.assets[url[0]] = image;
+				}
+				else{
+					const audio = new Audio();
 
-					++game.imageCounter;
+					audio.src = objecturl;
 
-					if (game.imageCounter === game.imageurls.length){
-						game.loader.remove();
+					game.assets[url[0]] = audio;
+				}
+				++game.assetCounter;
 
-						setup();
-					}
-				});
+				if (game.assetCounter === game.asseturls.length){
+					loaded();
+
+					setup();
+				}
 			});
-		}
+		});
+	}
+	function loaded(){
+		game.music = game.assets.music;
+		game.music.loop = true;
+
+		game.left.style.visibility = "visible";
+		game.right.style.visibility = "visible";
+		game.shoot.style.visibility = "visible";
+
+		game.assets.left.classList.add("button1");
+		game.left.appendChild(game.assets.left);
+
+		game.assets.right.classList.add("button1");
+		game.right.appendChild(game.assets.right);
+
+		game.assets.shoot.classList.add("button2");
+		game.shoot.appendChild(game.assets.shoot);
+
+		game.loader.remove();
 	}
 	function setup(){
 		addEventListeners();
-		addPlayButton();
 		addBackground();
+		addPlayButton();
 		loop();
 	}
 	function start(){
@@ -186,7 +234,7 @@ function Game(){
 	}
 	function addPlayButton(){
 		game.playButton = {
-			image: game.images.play,
+			image: game.assets.play,
 			x: 85,
 			y: 230,
 			width: 230,
@@ -197,7 +245,7 @@ function Game(){
 				if (!game.playButton.restart){
 					game.playButton.restart = true;
 
-					game.playButton.image = game.images.gameOver;
+					game.playButton.image = game.assets.gameOver;
 
 					game.playButton.remove();
 
@@ -226,7 +274,7 @@ function Game(){
 	}
 	function addHealthBar(){
 		game.healthBar = {
-			image: game.images.health3,
+			image: game.assets.health3,
 			x: 285,
 			y: 20,
 			width: 110,
@@ -236,17 +284,17 @@ function Game(){
 				game.healthBar.updateHealth();
 			},
 			updateHealth: function(){
-				game.healthBar.image = game.images[`health${game.ship.health}`];
+				game.healthBar.image = game.assets[`health${game.ship.health}`];
 			},
 			reset: function(){
 				game.healthBar.x = 285;
 				game.healthBar.y = 20;
-				game.healthBar.image = game.images.health3;
+				game.healthBar.image = game.assets.health3;
 			},
 			remove: function(){
 				game.healthBar.x = -10000;
 				game.healthBar.y = -10000;
-				game.healthBar.image = game.images.health3;
+				game.healthBar.image = game.assets.health3;
 			},
 			render: function(){
 				game.context.drawImage(game.healthBar.image, game.healthBar.x, game.healthBar.y, game.healthBar.width, game.healthBar.height);
@@ -295,7 +343,7 @@ function Game(){
 	}
 	function addBackground(){
 		game.background = {
-			image: game.images.background,
+			image: game.assets.background,
 			x1: 0,
 			x2: 0,
 			y1: 0,
@@ -325,7 +373,7 @@ function Game(){
 	}
 	function addShip(){
 		game.ship = {
-			image: game.images.ship,
+			image: game.assets.ship,
 			x: 180,
 			y: 470,
 			width: 50,
@@ -337,9 +385,6 @@ function Game(){
 			bullets: [],
 			bulletLimit: 5,
 			health: 3,
-			recoverTimeout1: 0,
-			recoverTimeout2: 0,
-			recoverIntervalTime: 10000,
 
 			update: function(){
 				game.ship.move();
@@ -363,12 +408,6 @@ function Game(){
 				if (game.ship.x >= game.width - game.ship.width){
 					game.ship.x = game.width - game.ship.width;
 				}
-				if (game.ship.health > 3){
-					game.ship.health = 3;
-				}
-				if (game.ship.health < 0){
-					game.ship.health = 0;
-				}
 			},
 			moveLeft: function(){
 				game.ship.onLeft = true;
@@ -388,23 +427,12 @@ function Game(){
 
 					window.setTimeout(function(){
 						game.ship.shootable = true;
-					}, 500);
+					}, 400);
 					game.ship.shootable = false;
 				}
 			},
 			damage: function(){
 				game.ship.health -= 1;
-
-				if (game.ship.health === 2){
-					game.ship.recoverTimeout1 = window.setTimeout(function(){
-						++game.ship.health;
-					}, game.ship.recoverIntervalTime*2);
-				}
-				else if (game.ship.health === 1){
-					game.ship.recoverTimeout2 = window.setTimeout(function(){
-						++game.ship.health;
-					}, game.ship.recoverIntervalTime);
-				}
 			},
 			checkCollision: function(){
 				game.enemies.forEach(function(enemy){
@@ -450,13 +478,6 @@ function Game(){
 				game.ship.onRight = false;
 				game.ship.bullets = [];
 				game.ship.health = 3;
-
-				if (game.ship.recoverTimeout1){
-					window.clearTimeout(game.ship.recoverTimeout1);
-				}
-				if (game.ship.recoverTimeout2){
-					window.clearTimeout(game.ship.recoverTimeout2);
-				}
 			},
 			remove(){
 				game.ship.x = -10000;
@@ -465,13 +486,6 @@ function Game(){
 				game.ship.onRight = false;
 				game.ship.bullets = [];
 				game.ship.health = 3;
-
-				if (game.ship.recoverTimeout1){
-					window.clearTimeout(game.ship.recoverTimeout1);
-				}
-				if (game.ship.recoverTimeout2){
-					window.clearTimeout(game.ship.recoverTimeout2);
-				}
 			},
 			render: function(){
 				game.context.drawImage(game.ship.image, game.ship.x, game.ship.y, game.ship.width, game.ship.height);
@@ -480,7 +494,7 @@ function Game(){
 	}
 	function addBullet(){
 		const bullet = {
-			image: game.images.laser,
+			image: game.assets.laser,
 			x: game.ship.x + game.ship.width/2 - 15,
 			y: game.ship.y + game.ship.height/2 - 15,
 			width: 30,
@@ -515,7 +529,7 @@ function Game(){
 			intervalTime: 2000,
 
 			randomImage: function(){
-				return game.images[`enemy${random(1, 3)}`];
+				return game.assets[`enemy${random(1, 3)}`];
 			},
 			randomX: function(){
 				return random(50, 320);
@@ -607,7 +621,7 @@ function Game(){
 			intervalTime: 15000,
 
 			randomImage: function(){
-				return game.images[`boss${random(1, 3)}`];
+				return game.assets[`boss${random(1, 3)}`];
 			},
 			randomX: function(){
 				return random(50, 320);
@@ -717,7 +731,7 @@ function Game(){
 	}
 	function addFire(boss){
 		const bullet = {
-			image: game.images.fire,
+			image: game.assets.fire,
 			x: boss.x + boss.width/2 - 20,
 			y: boss.y + boss.height/2 - 20,
 			width: 40,
@@ -808,9 +822,11 @@ function Game(){
 					(y > game.playButton.y) &&
 					(y < game.playButton.y + game.playButton.height)
 				){
+					if (!game.playButton.restart){
+						game.music.play();
+					}
 					game.playButton.click();
 				}
-				game.music.play();
 			}
 		}
 		game.left.onpointerdown = function(){
