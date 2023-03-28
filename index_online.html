@@ -822,12 +822,10 @@ function Game(){
 					(y > game.playButton.y) &&
 					(y < game.playButton.y + game.playButton.height)
 				){
-					if (!game.playButton.restart){
-						game.music.play();
-					}
 					game.playButton.click();
 				}
 			}
+			game.music.play();
 		}
 		game.left.onpointerdown = function(){
 			if (game.ship){
